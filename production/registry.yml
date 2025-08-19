@@ -1,0 +1,65 @@
+version: '3.8'
+
+networks:
+  koompi-cloud-shared:
+    external: true
+
+services:
+  # Docker Registry with temporary storage (10GB limit)
+  registry:
+    image: registry:2
+    ports:
+      - "5000:5000"
+    environment:
+      # Basic configuration
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      
+      # Storage configuration - using filesystem with tmpfs for temporary storage
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      
+      # Garbage collection
+      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_ENABLED: "true"
+      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_AGE: 24h
+      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_INTERVAL: 1h
+      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_DRYRUN: "false"
+      
+      # Security (optional - uncomment to enable authentication)
+      # REGISTRY_AUTH: htpasswd
+      # REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      # REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      
+      # Proxy configuration (optional - for caching Docker Hub)
+      # REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
+    volumes:
+      # Using tmpfs for temporary storage (resets on restart)
+      # Limited to 10GB
+      - type: tmpfs
+        target: /var/lib/registry
+        tmpfs:
+          size: 10737418240  # 10GB in bytes
+      
+      # Optional: for authentication
+      # - ./auth:/auth:ro
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/v2/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+

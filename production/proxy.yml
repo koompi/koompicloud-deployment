@@ -1,0 +1,69 @@
+version: '3.8'
+
+networks:
+  koompi-cloud-shared:
+    external: true
+
+services:
+  # Nginx Proxy Manager
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    ports:
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+      - "81:81"      # Admin UI
+    environment:
+      DB_MYSQL_HOST: "npm-db"
+      DB_MYSQL_PORT: 3306
+      DB_MYSQL_USER: ${NPM_DB_USER:-npm}
+      DB_MYSQL_PASSWORD: ${NPM_DB_PASSWORD:-changeme}
+      DB_MYSQL_NAME: ${NPM_DB_NAME:-npm}
+      DISABLE_IPV6: 'true'
+    volumes:
+      - ${STORAGE_PATH}/npm-data:/data
+      - ${STORAGE_PATH}/npm-letsencrypt:/etc/letsencrypt
+    networks:
+      - koompi-cloud-shared
+    depends_on:
+      - npm-db
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:81/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # MySQL database for NPM
+  npm-db:
+    image: mariadb:11
+    environment:
+      MYSQL_ROOT_PASSWORD: ${NPM_MYSQL_ROOT_PASSWORD:-rootchangeme}
+      MYSQL_DATABASE: ${NPM_DB_NAME:-npm}
+      MYSQL_USER: ${NPM_DB_USER:-npm}
+      MYSQL_PASSWORD: ${NPM_DB_PASSWORD:-changeme}
+    volumes:
+      - ${STORAGE_PATH}/npm-mysql:/var/lib/mysql
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

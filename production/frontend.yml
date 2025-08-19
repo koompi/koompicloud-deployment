@@ -1,0 +1,43 @@
+version: '3.8'
+
+networks:
+  koompi-cloud-shared:
+    external: true
+
+services:
+  dynamic-serve:
+    image: >-
+      image.koompi.org/library/koompi-cloud/dynamic-serve:latest
+    environment:
+      - API_KEY=your_generated_secure_key_here
+      - NODE_ENV=production
+      - HTML_BASE_PATH=${ABSOLUTE_PATH}/dynamic-serve
+      - BACKEND_URL=http://gateway:8083
+    volumes:
+      - ${STORAGE_PATH}:${ABSOLUTE_PATH}
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  frontend:
+    image: >-
+      image.koompi.org/library/koompi-cloud/frontend:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_CNAME_TARGET=${CNAME:-cname.koompi.cloud}
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager

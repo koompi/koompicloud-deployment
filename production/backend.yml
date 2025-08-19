@@ -1,0 +1,562 @@
+version: '3.8'
+
+networks:
+  koompi-cloud-shared:
+    external: true
+
+services:
+  # Secrets Service (placed first as many services depend on it)
+  secrets-service:
+    image: hangsiahong383/koompi-cloud-secrets-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_SECRETS_PORT=50058
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-your_secret_key_here_change_in_production}
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Repository Service (placed early as build service depends on it)
+  repository-service:
+    image: hangsiahong383/koompi-cloud-repository-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_REPOSITORY_PORT=50056
+      - SECRETS_SERVICE_ADDR=secrets-service:50058
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Deployment Service
+  deployment-service:
+    image: hangsiahong383/koompi-cloud-deployment-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_DEPLOYMENT_PORT=50051
+      - DOMAIN_SERVICE_ADDR=domain-service:50057
+      - SERVICE_TOKEN=deployment-service-token-123
+      - SECRETS_SERVICE_ADDR=secrets-service:50058
+      - REGISTRY_SERVICE_ADDR=registry-service:50062
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    privileged: true
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+    depends_on:
+      - registry-service
+      - secrets-service
+      - domain-service
+
+  
+
+  # Service Manager
+  service-manager:
+    image: hangsiahong383/koompi-cloud-service-manager:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_SERVICE_MANAGER_PORT=50053
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Auth Service
+  auth-service:
+    image: hangsiahong383/koompi-cloud-auth-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_AUTH_PORT=50054
+      - JWT_SECRET=${JWT_SECRET:-your_secret_key_here_change_in_production}
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Project Service
+  project-service:
+    image: hangsiahong383/koompi-cloud-project-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_PROJECT_PORT=50055
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Domain Service(Nginx Proxy Manager)
+  domain-service:
+    image: hangsiahong383/koompi-cloud-domain-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_DOMAIN_PORT=50057
+      - NPM_URL=${NPM_URL:-http://192.168.1.100:81/api}
+      - NPM_EMAIL=${NPM_EMAIL:-admin@example.com}
+      - NPM_PASSWORD=${NPM_PASSWORD:-changeme}
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Database Service
+  database-service:
+    image: hangsiahong383/koompi-cloud-database-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_DATABASE_PORT=50059
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+      - BACKUP_DIR=${ABSOLUTE_PATH}/database-backups
+      - BACKUP_RETENTION_DAYS=30
+      - BACKUP_INTERVAL_HOURS=24
+      - SECRETS_SERVICE_ADDR=secrets-service:50058
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${STORAGE_PATH}:${ABSOLUTE_PATH}
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+    depends_on:
+      - secrets-service
+
+  # Notification Service
+  notification-service:
+    image: hangsiahong383/koompi-cloud-notification-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_NOTIFICATION_PORT=50060
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+  # Registry Service
+  registry-service:
+    image: hangsiahong383/koompi-cloud-registry-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_REGISTRY_PORT=50062
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Stack Service
+  stack-service:
+    image: hangsiahong383/koompi-cloud-stack-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_STACK_PORT=50061
+      - REGISTRY_SERVICE_ADDR=registry-service:50062
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+      - DOMAIN_SERVICE_ADDR=domain-service:50057
+      - PROJECT_SERVICE_ADDR=project-service:50055
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Capsule Service
+  capsule-service:
+    image: hangsiahong383/koompi-cloud-capsule-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_CAPSULE_PORT=50063
+      - DOMAIN_SERVICE_ADDR=domain-service:50057
+      - PROJECT_SERVICE_ADDR=project-service:50055
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+      - PERSISTENT_STORAGE_PATH=${ABSOLUTE_PATH}/capsules
+      - CAPSULE_RUNTIME_IMAGE=hangsiahong383/koompi-cloud-capsule-runtime:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${STORAGE_PATH}:${ABSOLUTE_PATH}
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+    depends_on:
+      - registry-service
+
+  # Template Service
+  template-service:
+    image: hangsiahong383/koompi-cloud-template-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_TEMPLATE_PORT=50064
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${STORAGE_PATH}:${ABSOLUTE_PATH}
+      - ${STORAGE_PATH}/templates-dokploy:/templates
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+    privileged: true
+
+  # Build Service
+  build-service:
+    image: hangsiahong383/koompi-cloud-build-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_BUILD_PORT=50052
+      - REGISTRY_URL=${REGISTRY_URL:-image.koompi.org}
+      - REGISTRY_USERNAME=${REGISTRY_USERNAME}
+      - REGISTRY_PASSWORD=${REGISTRY_PASSWORD}
+      - RPC_DEPLOYMENT_ADDR=deployment-service:50051
+      - REPOSITORY_SERVICE_ADDR=repository-service:50056
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+      - SERVICE_TOKEN=build-service-token
+      - BUILD_LOGS_DIR=${ABSOLUTE_PATH}/build-service/logs
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${STORAGE_PATH}/build-service:${ABSOLUTE_PATH}/build-service
+      # - /root/.docker/config.json:/root/.docker/config.json:ro
+    depends_on:
+      - repository-service
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Metrics Service
+  metrics-service:
+    image: hangsiahong383/koompi-cloud-metrics-service:latest
+    ports:
+      - "50010:50010"
+      - "50071:50071"
+      - "8080:8080"
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DB_NAME=kontainer
+      - RPC_METRICS_PORT=50070
+      - RPC_WORKER_REGISTRATION_PORT=50071
+      - HEALTH_CHECK_PORT=8080
+      - COLLECTION_INTERVAL_SECONDS=15
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+      - RPC_BIND_ADDRESS=0.0.0.0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    privileged: true
+    networks:
+      - koompi-cloud-shared
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+    depends_on:
+      - deployment-service
+      - build-service
+      - service-manager
+      - auth-service
+      - project-service
+      - repository-service
+      - domain-service
+      - secrets-service
+      - database-service
+      - notification-service
+      - stack-service
+      - registry-service
+
+  # Metrics Worker (Global)
+  metrics-worker:
+    image: hangsiahong383/koompi-cloud-metrics-worker:latest
+    environment:
+      - METRICS_SERVER_HOST=metrics-service
+      - METRICS_SERVER_PORT=50070
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - COLLECTION_INTERVAL_SECONDS=15
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+      - NODE_NAME={{.Node.Hostname}}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/hostname:/host_hostname  # Mount host hostname file
+    networks:
+      - koompi-cloud-shared
+    privileged: true
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep metrics-worker | grep -v grep || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      - metrics-service
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+  
+  monitor-service:
+    image: hangsiahong383/koompi-cloud-monitor-service:latest
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - DATABASE_NAME=kontainer
+      - MONITOR_SERVICE_PORT=50100
+      - NPM_URL=${NPM_URL:-http://proxy_nginx_proxy_manager:81}
+      - NPM_EMAIL=${NPM_EMAIL:-admin@example.com}
+      - NPM_PASSWORD={$NPM_PASSWORD:-changeme}
+      - NPM_LOG_DIR=${ABSOLUTE_PATH}/npm-data/nginx/logs
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/hostname:/host_hostname  # Mount host hostname file
+      - ${STORAGE_PATH}:{ABSOLUTE_PATH}
+    networks:
+      - koompi-cloud-shared
+    privileged: true
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep metrics-worker | grep -v grep || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+
+  monitor-worker:
+    image: hangsiahong383/koompi-cloud-monitor-worker:latest
+    environment:
+      - MONITOR_SERVICE_ADDR=monitor-service:50100
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/hostname:/host_hostname  # Mount host hostname file
+    networks:
+      - koompi-cloud-shared
+    privileged: true
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep metrics-worker | grep -v grep || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+
+
+  # License Service
+  license-service:
+    image: hangsiahong383/koompi-cloud-license-service:latest
+    ports:
+      - "50072:50072"
+    environment:
+      - LICENSE_SERVICE_BIND_ADDRESS=0.0.0.0:50072
+      - SUBSCRIPTION_ID=${SUBSCRIPTION_ID}
+      - PORTAL_URL=${PORTAL_URL:-https://koompi.cloud}
+      - PORTAL_API_KEY=${PORTAL_API_KEY}
+      - KOOMPI_VERSION=${KOOMPI_VERSION:-2.0.0}
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/machine-id:/etc/machine-id:ro
+      # - /var/lib/dbus/machine-id:/var/lib/dbus/machine-id:ro
+    networks:
+      - koompi-cloud-shared
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Gateway Service - Placed at the end and depends on all other services
+  gateway:
+    image: hangsiahong383/koompi-cloud-gateway:latest
+    ports:
+      - "8083:8083"
+    environment:
+      - GATEWAY_BIND_ADDRESS=0.0.0.0:8083
+      - GATEWAY_STARTUP_DELAY_SECS=5
+      - LICENSE_SERVICE_URL=http://license-service:50072
+      - RPC_DEPLOYMENT_ADDR=deployment-service:50051
+      - RPC_BUILD_ADDR=build-service:50052
+      - RPC_SERVICE_MANAGER_ADDR=service-manager:50053
+      - RPC_AUTH_ADDR=auth-service:50054
+      - RPC_PROJECT_ADDR=project-service:50055
+      - RPC_REPOSITORY_ADDR=repository-service:50056
+      - RPC_DOMAIN_ADDR=domain-service:50057
+      - RPC_SECRETS_ADDR=secrets-service:50058
+      - RPC_DATABASE_ADDR=database-service:50059
+      - RPC_STACK_ADDR=stack-service:50061
+      - RPC_NOTIFICATION_ADDR=notification-service:50060
+      - RPC_REGISTRY_ADDR=registry-service:50062
+      - RPC_CAPSULE_ADDR=capsule-service:50063
+      - RPC_TEMPLATE_ADDR=template-service:50064
+      - RPC_METRICS_ADDR=metrics-service:50070      
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
+      - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-first_user_only}
+      - RPC_MONITOR_ADDR=monitor-service:50100
+      - MONGO_URI=${MONGO_URI}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${STORAGE_PATH}:${ABSOLUTE_PATH}
+    privileged: true
+    networks:
+      - koompi-cloud-shared
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - deployment-service
+      - build-service
+      - service-manager
+      - auth-service
+      - project-service
+      - repository-service
+      - domain-service
+      - secrets-service
+      - database-service
+      - notification-service
+      - stack-service
+      - registry-service
+      - template-service
+      - metrics-service
+      - license-service
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.role == manager
