@@ -428,7 +428,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/hostname:/host_hostname  # Mount host hostname file
-      - ${STORAGE_PATH}:{ABSOLUTE_PATH}
+      - ${STORAGE_PATH}:${ABSOLUTE_PATH}
     networks:
       - koompi-cloud-shared
     privileged: true
