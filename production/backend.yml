@@ -262,11 +262,12 @@ services:
       - DOMAIN_SERVICE_ADDR=domain-service:50057
       - PROJECT_SERVICE_ADDR=project-service:50055
       - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
-      - PERSISTENT_STORAGE_PATH=${ABSOLUTE_PATH}/capsules
+      - PERSISTENT_STORAGE_PATH=${ABSOLUTE_PATH}
       - CAPSULE_RUNTIME_IMAGE=hangsiahong383/koompi-cloud-capsule-runtime:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${STORAGE_PATH}:${ABSOLUTE_PATH}
+      - ${STORAGE_PATH}/koompi-uploads:/tmp/koompi-uploads
     networks:
       - koompi-cloud-shared
     deploy:
@@ -320,6 +321,8 @@ services:
       - DOCKER_GROUP_ID=${DOCKER_GROUP_ID:-998}
       - SERVICE_TOKEN=build-service-token
       - BUILD_LOGS_DIR=${ABSOLUTE_PATH}/build-service/logs
+      - REGISTRY_HOST=registry:5000
+      - BUILD_SERVICE_CACHE_DIR=${ABSOLUTE_PATH}/build-service/repos
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${STORAGE_PATH}/build-service:${ABSOLUTE_PATH}/build-service
@@ -421,10 +424,10 @@ services:
       - MONGO_URI=${MONGO_URI}
       - DATABASE_NAME=kontainer
       - MONITOR_SERVICE_PORT=50100
-      - NPM_URL=${NPM_URL:-http://proxy_nginx_proxy_manager:81}
+      - NPM_URL=${NPM_URL:-http://nginx-proxy-manager:81}
       - NPM_EMAIL=${NPM_EMAIL:-admin@example.com}
-      - NPM_PASSWORD={$NPM_PASSWORD:-changeme}
-      - NPM_LOG_DIR=${ABSOLUTE_PATH}/npm-data/nginx/logs
+      - NPM_PASSWORD=${NPM_PASSWORD:-changeme}
+      - NPM_LOG_DIR=${ABSOLUTE_PATH}/npm-data/logs
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/hostname:/host_hostname  # Mount host hostname file
@@ -433,16 +436,19 @@ services:
       - koompi-cloud-shared
     privileged: true
     healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep metrics-worker | grep -v grep || exit 1"]
+      test: ["CMD-SHELL", "ps aux | grep monitor-service | grep -v grep || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 5s
 
     deploy:
-      mode: global
+      replicas: 1
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
 
   monitor-worker:
     image: hangsiahong383/koompi-cloud-monitor-worker:latest
@@ -455,11 +461,13 @@ services:
       - koompi-cloud-shared
     privileged: true
     healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep metrics-worker | grep -v grep || exit 1"]
+      test: ["CMD-SHELL", "ps aux | grep monitor-worker | grep -v grep || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 5s
+    depends_on:
+      - monitor-service
 
     deploy:
       mode: global
@@ -525,6 +533,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${STORAGE_PATH}:${ABSOLUTE_PATH}
+      - ${STORAGE_PATH}/koompi-uploads:/tmp/koompi-uploads
     privileged: true
     networks:
       - koompi-cloud-shared
