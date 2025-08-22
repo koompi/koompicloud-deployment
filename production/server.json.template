@@ -1,0 +1,18 @@
+{
+  "servers": [
+    {
+      "host": "192.168.1.100",
+      "role": "manager"
+    },
+    {
+      "host": "192.168.1.101",
+      "role": "worker"
+    },
+    {
+      "host": "192.168.1.102",
+      "role": "worker"
+    }
+  ],
+  "ssh_key": "/path/to/your/ssh/key",
+  "use_glusterfs": true
+}

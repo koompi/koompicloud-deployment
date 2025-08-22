@@ -5,7 +5,7 @@ networks:
     external: true
 
 services:
-  # Docker Registry with temporary storage (10GB limit)
+  # Docker Registry - Simplified and Stable
   registry:
     image: registry:2
     ports:
@@ -15,22 +15,19 @@ services:
       REGISTRY_HTTP_ADDR: 0.0.0.0:5000
       REGISTRY_STORAGE_DELETE_ENABLED: "true"
       
-      # Storage configuration - using filesystem with tmpfs for temporary storage
+      # Storage configuration
       REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
       
-      # Garbage collection
-      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_ENABLED: "true"
-      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_AGE: 24h
-      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_INTERVAL: 1h
-      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_DRYRUN: "false"
+      # Log level
+      REGISTRY_LOG_LEVEL: "info"
       
-      # Security (optional - uncomment to enable authentication)
-      # REGISTRY_AUTH: htpasswd
-      # REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
-      # REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      # Basic health check endpoint
+      REGISTRY_HTTP_DEBUG_ADDR: 0.0.0.0:5001
+      REGISTRY_HTTP_DEBUG_PROMETHEUS_ENABLED: "false"
       
-      # Proxy configuration (optional - for caching Docker Hub)
-      # REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
+      # Disable complex maintenance for stability
+      # We'll handle cleanup manually if needed
+      
     volumes:
       # Using tmpfs for temporary storage (resets on restart)
       # Limited to 10GB
@@ -39,8 +36,6 @@ services:
         tmpfs:
           size: 10737418240  # 10GB in bytes
       
-      # Optional: for authentication
-      # - ./auth:/auth:ro
     networks:
       - koompi-cloud-shared
     deploy:
@@ -48,18 +43,22 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
       placement:
         constraints:
           - node.role == manager
       resources:
         limits:
           memory: 2G
+          cpus: '1.0'
         reservations:
           memory: 512M
+          cpus: '0.25'
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/v2/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-

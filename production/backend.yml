@@ -127,6 +127,7 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - DB_NAME=kontainer
       - RPC_PROJECT_PORT=50055
+      - MONITOR_SERVICE_ADDR=monitor-service:50100
     networks:
       - koompi-cloud-shared
     deploy:
