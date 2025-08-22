@@ -458,6 +458,9 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/hostname:/host_hostname  # Mount host hostname file
+      - /proc:/host/proc:ro  # Mount host proc for CPU and memory metrics
+      - /sys:/host/sys:ro    # Mount host sys for system metrics
+      - /:/host:ro           # Mount entire host filesystem for disk metrics
     networks:
       - koompi-cloud-shared
     privileged: true
