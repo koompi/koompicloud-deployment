@@ -20,7 +20,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -32,12 +35,16 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_CNAME_TARGET=${CNAME:-cname.koompi.cloud}
+      - NODE_ENV=production
     networks:
       - koompi-cloud-shared
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager

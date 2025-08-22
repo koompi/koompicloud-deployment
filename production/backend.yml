@@ -155,6 +155,8 @@ services:
       placement:
         constraints:
           - node.role == manager
+    depends_on:
+        - monitor-service
 
   # Domain Service(Nginx Proxy Manager)
   domain-service:
@@ -619,6 +621,7 @@ services:
       - registry-service
       - template-service
       - metrics-service
+      - monitor-service
       - license-service
     deploy:
       replicas: 1
