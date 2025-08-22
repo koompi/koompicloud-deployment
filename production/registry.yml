@@ -42,9 +42,9 @@ services:
       mode: replicated
       replicas: 1
       restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 5
+        condition: any
+        delay: 5s
+        max_attempts: 0
         window: 120s
       placement:
         constraints:

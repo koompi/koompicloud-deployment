@@ -22,7 +22,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -41,7 +44,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -68,7 +74,10 @@ services:
       mode: replicated
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -95,7 +104,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -114,7 +126,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -133,7 +148,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -154,7 +172,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -181,7 +202,10 @@ services:
       mode: replicated
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -202,7 +226,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -222,7 +249,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -247,7 +277,10 @@ services:
       mode: replicated
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -275,7 +308,10 @@ services:
       mode: replicated
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -300,7 +336,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -336,7 +375,10 @@ services:
       mode: replicated
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -372,7 +414,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -417,7 +462,10 @@ services:
     deploy:
       mode: global
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
   
   monitor-service:
     image: image.koompi.org/library/koompi-cloud/monitor-service:latest
@@ -446,7 +494,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
@@ -476,7 +527,10 @@ services:
     deploy:
       mode: global
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
 
 
   # License Service
@@ -500,7 +554,10 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
       placement:
         constraints:
           - node.role == manager
