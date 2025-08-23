@@ -19,6 +19,13 @@ if ! docker network ls | grep -q koompi-cloud-shared; then
     exit 1
 fi
 
+# Step 5: Deploy proxy stack (if exists)
+if [ -f proxy.yml ]; then
+    echo "Deploying proxy stack..."
+    docker stack deploy --with-registry-auth --detach=true -c proxy.yml proxy
+fi
+
+
 # Step 2: Deploy database stack with detach flag
 echo "Deploying database stack..."
 docker stack deploy --with-registry-auth --detach=false -c database.yml database
@@ -48,11 +55,6 @@ if [ -f frontend.yml ]; then
     docker stack deploy --with-registry-auth --detach=false -c frontend.yml frontend
 fi
 
-# Step 5: Deploy proxy stack (if exists)
-if [ -f proxy.yml ]; then
-    echo "Deploying proxy stack..."
-    docker stack deploy --with-registry-auth --detach=false -c proxy.yml proxy
-fi
 
 # Step 6: Deploy registry stack (if exists)
 if [ -f registry.yml ]; then

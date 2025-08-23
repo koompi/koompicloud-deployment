@@ -10,7 +10,6 @@ else
       --driver overlay \
       --attachable \
       --scope swarm \
-      --opt encrypted \
       koompi-cloud-shared
 fi
 
