@@ -6,7 +6,7 @@ networks:
 
 services:
   # Nginx Proxy Manager
-  nginx-proxy-manager:
+  proxy:
     image: jc21/nginx-proxy-manager:latest
     ports:
       - "80:80"      # HTTP
